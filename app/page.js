@@ -26,46 +26,47 @@ export default function Home() {
   }])
 
   const [message, setMessage] = useState('')
+  
 
   const editorRef = useRef(null);
   const [editor, setEditor] = useState(null);
 
   const [output, setOutput] = useState('');
   const [pyodide, setPyodide] = useState(null);
+  const [isTaskDescription, setIsTaskDescription] = useState(false);
 
-  // Load Pyodide dynamically
+
   useEffect(() => {
     const loadPyodide = async () => {
       const script = document.createElement("script");
       script.src = "https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js";
       script.onload = async () => {
-        const pyodide = await window.loadPyodide(); // Load the Pyodide instance
-        setPyodide(pyodide); // Save Pyodide instance to state
+        const pyodide = await window.loadPyodide(); 
+        setPyodide(pyodide); 
       };
-      document.body.appendChild(script); // Append the script to the body
+      document.body.appendChild(script); 
     };
-    loadPyodide(); // Load Pyodide when the component mounts
+    loadPyodide(); 
   }, []);
 
   useEffect(() => {
-    // Initialize Ace editor
-    const aceEditor = ace.edit(editorRef.current);
-    aceEditor.setTheme("ace/theme/monokai");
-    aceEditor.session.setMode("ace/mode/python");
-    aceEditor.setValue(''); 
-    setEditor(aceEditor);
+    // Initialize editor once and keep it around
+    if (!editor) {
+      const aceEditor = ace.edit(editorRef.current);
+      aceEditor.setTheme("ace/theme/monokai");
+      aceEditor.session.setMode("ace/mode/python");
+      aceEditor.setValue('');
+      setEditor(aceEditor);
+    }
 
-    return () => aceEditor.destroy();
-    
-  }, []);
+    return () => {};
+  }, [editor]);
 
-    // Function to run Python code using Pyodide
     const runCode = async () => {
-      const code = editor.getValue(); // Get Python code from the editor
+      const code = editor.getValue();
   
       if (pyodide) {
         try {
-          // Redirect standard output to capture print statements
           await pyodide.runPythonAsync(`
             import sys
             from io import StringIO
@@ -84,12 +85,11 @@ export default function Home() {
             output = sys.stdout.get_value()  # Get the captured output
             `)
   
-          // Extract the captured output
           const output = await pyodide.runPythonAsync("output");
-          setOutput(output || ""); // Display the result in the output area
+          setOutput(output || "");
   
         } catch (err) {
-          setOutput(`Error: ${err.message}`); // Handle any errors
+          setOutput(`Error: ${err.message}`);
         }
       } else {
         setOutput("Pyodide not loaded yet! Please wait...");
@@ -181,23 +181,22 @@ export default function Home() {
            mb={2} 
            >
             <Button variant="contained" onClick={runCode}>Run</Button>
+            <Button variant="contained" onClick={() => setIsTaskDescription(!isTaskDescription)} style={{ marginLeft: '8px' }}>
+              {isTaskDescription ? 'Switch to Code Editor' : 'Switch to Task Description'}
+            </Button>
+            
           </Box>
-          
-          <Box // Code Editor Box
-            width="100%"
-            display="flex"
-            justifyContent="center" 
-            alignItems="center"
-            mb={2}
-          >
-            <Box ref={editorRef} id="editor" 
-              style={{ 
-                width: "100%", 
-                height: "500px", 
-                borderRadius: "12px",
-                overflow: "hidden", 
-                border: "1px solid #ccc" 
-              }} />
+          <Box
+            ref={editorRef}
+            id="editor"
+            style={{
+              display: isTaskDescription ? "none" : "block",
+              height: "500px",
+              width: "100%",
+            }}
+          ></Box>
+          <Box style={{ display: isTaskDescription ? "block" : "none" }}>
+            Task Description
           </Box>
           
           <Box // Output Box
